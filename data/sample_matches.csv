@@ -1,0 +1,74 @@
+date,home_team,away_team,home_goals,away_goals,neutral,tournament
+2018-06-14,Russia,Saudi Arabia,5,0,false,World Cup
+2018-06-15,Egypt,Uruguay,0,1,true,World Cup
+2018-06-15,Morocco,Iran,0,1,true,World Cup
+2018-06-15,Portugal,Spain,3,3,true,World Cup
+2018-06-16,France,Australia,2,1,true,World Cup
+2018-06-16,Argentina,Iceland,1,1,true,World Cup
+2018-06-16,Peru,Denmark,0,1,true,World Cup
+2018-06-17,Germany,Mexico,0,1,true,World Cup
+2018-06-17,Brazil,Switzerland,1,1,true,World Cup
+2018-06-18,Belgium,Panama,3,0,true,World Cup
+2018-06-18,Tunisia,England,1,2,true,World Cup
+2018-06-19,Colombia,Japan,1,2,true,World Cup
+2018-06-19,Poland,Senegal,1,2,true,World Cup
+2018-06-20,Portugal,Morocco,1,0,true,World Cup
+2018-06-21,Argentina,Croatia,0,3,true,World Cup
+2018-06-22,Brazil,Costa Rica,2,0,true,World Cup
+2018-06-23,Germany,Sweden,2,1,true,World Cup
+2018-06-24,England,Panama,6,1,true,World Cup
+2018-06-25,Uruguay,Russia,3,0,false,World Cup
+2018-06-26,Denmark,France,0,0,true,World Cup
+2018-06-27,South Korea,Germany,2,0,true,World Cup
+2018-06-28,England,Belgium,0,1,true,World Cup
+2018-06-30,France,Argentina,4,3,true,World Cup
+2018-06-30,Uruguay,Portugal,2,1,true,World Cup
+2018-07-01,Spain,Russia,1,1,false,World Cup
+2018-07-01,Croatia,Denmark,1,1,true,World Cup
+2018-07-02,Brazil,Mexico,2,0,true,World Cup
+2018-07-02,Belgium,Japan,3,2,true,World Cup
+2018-07-06,Uruguay,France,0,2,true,World Cup
+2018-07-06,Brazil,Belgium,1,2,true,World Cup
+2018-07-07,Sweden,England,0,2,true,World Cup
+2018-07-07,Russia,Croatia,2,2,false,World Cup
+2018-07-10,France,Belgium,1,0,true,World Cup
+2018-07-11,Croatia,England,2,1,true,World Cup
+2018-07-15,France,Croatia,4,2,true,World Cup
+2021-07-10,Argentina,Brazil,1,0,true,Copa America
+2021-07-11,England,Italy,1,1,false,Euro
+2021-10-10,France,Spain,2,1,true,Nations League
+2022-03-29,Portugal,North Macedonia,2,0,false,Qualifier
+2022-03-29,Poland,Sweden,2,0,false,Qualifier
+2022-06-14,Germany,Italy,5,2,false,Nations League
+2022-06-14,Netherlands,Wales,3,2,false,Nations League
+2022-09-23,Brazil,Ghana,3,0,true,Friendly
+2022-09-23,Argentina,Honduras,3,0,true,Friendly
+2022-09-26,England,Germany,3,3,false,Nations League
+2022-09-27,Portugal,Spain,0,1,false,Nations League
+2022-11-20,Qatar,Ecuador,0,2,false,World Cup
+2022-11-21,England,Iran,6,2,true,World Cup
+2022-11-22,Argentina,Saudi Arabia,1,2,true,World Cup
+2022-11-22,France,Australia,4,1,true,World Cup
+2022-11-23,Germany,Japan,1,2,true,World Cup
+2022-11-24,Brazil,Serbia,2,0,true,World Cup
+2022-11-25,Netherlands,Ecuador,1,1,true,World Cup
+2022-11-26,France,Denmark,2,1,true,World Cup
+2022-11-27,Spain,Germany,1,1,true,World Cup
+2022-11-28,Brazil,Switzerland,1,0,true,World Cup
+2022-11-30,Poland,Argentina,0,2,true,World Cup
+2022-12-01,Japan,Spain,2,1,true,World Cup
+2022-12-02,Cameroon,Brazil,1,0,true,World Cup
+2022-12-03,Netherlands,United States,3,1,true,World Cup
+2022-12-03,Argentina,Australia,2,1,true,World Cup
+2022-12-04,France,Poland,3,1,true,World Cup
+2022-12-04,England,Senegal,3,0,true,World Cup
+2022-12-05,Japan,Croatia,1,1,true,World Cup
+2022-12-05,Brazil,South Korea,4,1,true,World Cup
+2022-12-09,Croatia,Brazil,1,1,true,World Cup
+2022-12-09,Netherlands,Argentina,2,2,true,World Cup
+2022-12-10,Morocco,Portugal,1,0,true,World Cup
+2022-12-10,England,France,1,2,true,World Cup
+2022-12-13,Argentina,Croatia,3,0,true,World Cup
+2022-12-14,France,Morocco,2,0,true,World Cup
+2022-12-18,Argentina,France,3,3,true,World Cup
+

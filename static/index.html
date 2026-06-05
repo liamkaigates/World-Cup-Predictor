@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>World Cup Forecasting Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">World Cup Forecasting Engine</p>
+        <h1>Match Prediction Dashboard</h1>
+      </div>
+      <div class="status" id="status">Loading data</div>
+    </header>
+
+    <main class="layout">
+      <section class="panel summary-panel" aria-label="Dataset summary">
+        <div class="metric">
+          <span>Matches</span>
+          <strong id="matchCount">--</strong>
+        </div>
+        <div class="metric">
+          <span>Teams</span>
+          <strong id="teamCount">--</strong>
+        </div>
+        <div class="metric">
+          <span>Years</span>
+          <strong id="yearRange">--</strong>
+        </div>
+        <div class="metric">
+          <span>Goals / Match</span>
+          <strong id="goalsPerMatch">--</strong>
+        </div>
+      </section>
+
+      <section class="panel predictor" aria-label="Match predictor">
+        <div class="section-title">
+          <h2>Predict a Match</h2>
+          <button id="swapTeams" type="button" title="Swap teams">⇄</button>
+        </div>
+        <div class="controls">
+          <label>
+            Home team
+            <select id="homeTeam"></select>
+          </label>
+          <label>
+            Away team
+            <select id="awayTeam"></select>
+          </label>
+          <label class="toggle">
+            <input id="neutral" type="checkbox" checked>
+            Neutral site
+          </label>
+          <button id="predict" type="button">Predict</button>
+        </div>
+        <div class="prediction-result">
+          <div>
+            <span class="label">Most likely outcome</span>
+            <strong id="predictionLabel">--</strong>
+          </div>
+          <div class="bars" id="probabilityBars"></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Outcome distribution">
+        <div class="section-title">
+          <h2>Historical Outcomes</h2>
+        </div>
+        <div class="bars" id="outcomeBars"></div>
+      </section>
+
+      <section class="panel" aria-label="Top attacking teams">
+        <div class="section-title">
+          <h2>Top Attacking Teams</h2>
+        </div>
+        <div id="attackChart" class="rank-chart"></div>
+      </section>
+
+      <section class="panel match-history" aria-label="Match history">
+        <div class="section-title">
+          <h2>Match Explorer</h2>
+          <select id="historyTeam"></select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Match</th>
+                <th>Score</th>
+                <th>Site</th>
+              </tr>
+            </thead>
+            <tbody id="matchesTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
