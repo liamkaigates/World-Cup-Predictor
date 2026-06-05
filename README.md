@@ -4,8 +4,6 @@ Probabilistic international soccer match forecasting project built for ML engine
 
 The project trains leakage-safe match outcome models from historical fixtures, evaluates them with backtests, serves predictions over HTTP, and runs Monte Carlo simulations for future fixtures.
 
-## Why This Is Resume-Ready
-
 - Builds rolling pre-match features instead of using future information.
 - Predicts calibrated win/draw/loss probabilities, not only a winner.
 - Includes Elo-style team strength, recent form, goal differential, tournament context, and neutral-site features.
