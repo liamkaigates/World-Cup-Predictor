@@ -1,4 +1,4 @@
-.PHONY: data data-worldcup download-international import-international download-kaggle import-kaggle train backtest predict simulate test serve serve-sample train-sample backtest-sample
+.PHONY: data data-worldcup download-international import-international download-kaggle import-kaggle train backtest predict simulate compare test serve serve-sample train-sample backtest-sample
 
 PYTHONPATH := src
 MODEL := artifacts/model.pkl
@@ -43,6 +43,9 @@ predict:
 
 simulate:
 	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli simulate --model $(MODEL) --fixtures data/sample_fixtures.csv --runs 1000
+
+compare:
+	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli compare --matches $(MATCHES) --runs 10000 --output artifacts/wc_forecast.csv
 
 test:
 	PYTHONPATH=$(PYTHONPATH) python3 -m unittest discover -s tests
