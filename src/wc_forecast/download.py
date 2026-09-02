@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 KAGGLE_API_BASE = "https://www.kaggle.com/api/v1"
 DEFAULT_DATASET = "abecklas/fifa-world-cup"
-EXPECTED_FILES = ("WorldCupMatches.csv", "WorldCups.csv")
+INTERNATIONAL_DATASET = "martj42/international-football-results-from-1872-to-2017"
 
 
 class CredentialsError(RuntimeError):
@@ -135,7 +135,7 @@ def main() -> None:
     args = parser.parse_args()
 
     directory = Path(args.data_dir)
-    if not args.force and all((directory / name).is_file() for name in EXPECTED_FILES):
+    if not args.force and any(directory.glob("*.csv")):
         print(f"Dataset already present in {args.data_dir}; use --force to re-download")
         return
 

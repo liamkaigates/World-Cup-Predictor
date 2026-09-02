@@ -7,8 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from wc_forecast.data import parse_bool
-from wc_forecast.data import Match, load_matches
+from wc_forecast.data import Match, load_matches, parse_bool
 from wc_forecast.models import ForecastModel, load_model
 
 MAX_MATCH_LIMIT = 500
@@ -23,6 +22,7 @@ class PredictionHandler(BaseHTTPRequestHandler):
 
     protocol_version = "HTTP/1.1"
     timeout = 30
+    log_requests = False
     _static_cache: dict[Path, tuple[float, bytes]] = {}
 
     def do_GET(self) -> None:
@@ -113,7 +113,8 @@ class PredictionHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, format: str, *args) -> None:
-        return
+        if self.log_requests:
+            super().log_message(format, *args)
 
     def write_json(self, payload: dict, status: int = 200) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
@@ -171,6 +172,9 @@ def summary_payload(matches: list[Match]) -> dict:
         team_records[match.away_team]["goals_for"] += match.away_goals
         team_records[match.away_team]["goals_against"] += match.home_goals
 
+    # Scale the inclusion floor with dataset size so tiny sides don't dominate
+    # the leaderboard on large datasets, while toy datasets still show teams.
+    min_matches = min(200, max(3, len(matches) // 24))
     top_attack = sorted(
         (
             {
@@ -180,7 +184,7 @@ def summary_payload(matches: list[Match]) -> dict:
                 "goal_diff": record["goals_for"] - record["goals_against"],
             }
             for team, record in team_records.items()
-            if record["matches"] >= 3
+            if record["matches"] >= min_matches
         ),
         key=lambda item: item["goals_per_match"],
         reverse=True,
@@ -198,6 +202,25 @@ def summary_payload(matches: list[Match]) -> dict:
     }
 
 
+def build_server(
+    model: ForecastModel,
+    matches: list[Match],
+    static_dir: str | Path = "static",
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    log_requests: bool = False,
+) -> ThreadingHTTPServer:
+    PredictionHandler.model = model
+    PredictionHandler.matches = sorted(matches, key=lambda match: match.date, reverse=True)
+    PredictionHandler.summary = summary_payload(matches)
+    PredictionHandler.teams = sorted(model.team_states)
+    PredictionHandler.static_dir = Path(static_dir)
+    PredictionHandler.log_requests = log_requests
+    server = ThreadingHTTPServer((host, port), PredictionHandler)
+    server.daemon_threads = True
+    return server
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Serve World Cup match predictions over HTTP")
     parser.add_argument("--model", required=True)
@@ -205,17 +228,17 @@ def main() -> None:
     parser.add_argument("--static-dir", default="static")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--log-requests", action="store_true", help="Log each request to stderr")
     args = parser.parse_args()
 
-    matches = load_matches(args.matches)
-    PredictionHandler.model = load_model(args.model)
-    PredictionHandler.matches = sorted(matches, key=lambda match: match.date, reverse=True)
-    PredictionHandler.summary = summary_payload(matches)
-    PredictionHandler.teams = sorted(PredictionHandler.model.team_states)
-    PredictionHandler.static_dir = Path(args.static_dir)
-
-    server = ThreadingHTTPServer((args.host, args.port), PredictionHandler)
-    server.daemon_threads = True
+    server = build_server(
+        load_model(args.model),
+        load_matches(args.matches),
+        static_dir=args.static_dir,
+        host=args.host,
+        port=args.port,
+        log_requests=args.log_requests,
+    )
     print(f"Serving predictions at http://{args.host}:{args.port}")
     try:
         server.serve_forever()

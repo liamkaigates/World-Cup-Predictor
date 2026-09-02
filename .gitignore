@@ -10,5 +10,7 @@ artifacts/
 *.csv.out
 kaggle.json
 data/kaggle/
+data/international/
 data/world_cup_matches.csv
+data/international_matches.csv
 

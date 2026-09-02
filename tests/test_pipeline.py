@@ -4,8 +4,8 @@ from tempfile import TemporaryDirectory
 
 from wc_forecast.api import match_rows
 from wc_forecast.data import load_matches
-from wc_forecast.kaggle import convert_world_cup_matches
-from wc_forecast.models import backtest, train_model
+from wc_forecast.kaggle import convert_international_results, convert_world_cup_matches
+from wc_forecast.models import backtest, load_model, save_model, train_model
 from wc_forecast.simulate import simulate_fixtures
 
 
@@ -66,6 +66,45 @@ class ForecastPipelineTest(unittest.TestCase):
         team_rows = match_rows(matches, team="Argentina", limit=100)
         for row in team_rows:
             self.assertIn("Argentina", {row["home_team"], row["away_team"]})
+
+    def test_model_roundtrip_and_schema_guard(self):
+        matches = load_matches("data/sample_matches.csv")
+        model = train_model(matches)
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "model.pkl"
+            save_model(model, path)
+            loaded = load_model(path)
+            self.assertEqual(loaded.feature_names, model.feature_names)
+
+            stale = train_model(matches)
+            stale.schema_version = 1
+            stale_path = Path(tmp) / "stale.pkl"
+            save_model(stale, stale_path)
+            with self.assertRaises(ValueError):
+                load_model(stale_path)
+
+    def test_international_results_importer(self):
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            results_csv = tmp_path / "results.csv"
+            output_csv = tmp_path / "matches.csv"
+            results_csv.write_text(
+                "\n".join(
+                    [
+                        "date,home_team,away_team,home_score,away_score,tournament,city,country,neutral",
+                        "2022-12-18,Argentina,France,3,3,FIFA World Cup,Lusail,Qatar,TRUE",
+                        "2023-03-23,Germany,Peru,2,0,Friendly,Mainz,Germany,FALSE",
+                        "2026-06-11,Mexico,TBD,,,FIFA World Cup,Mexico City,Mexico,FALSE",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            count = convert_international_results(results_csv, output_csv)
+            imported = load_matches(output_csv)
+            self.assertEqual(count, 2)
+            self.assertEqual(imported[0].tournament, "FIFA World Cup")
+            self.assertTrue(imported[0].neutral)
+            self.assertFalse(imported[1].neutral)
 
     def test_kaggle_importer(self):
         with TemporaryDirectory() as tmp:

@@ -1,5 +1,7 @@
 # World Cup Forecasting Engine
 
+![CI](https://github.com/liamkaigates/World-Cup-Predictor/actions/workflows/ci.yml/badge.svg)
+
 Probabilistic international soccer match forecasting project built for ML engineering portfolios.
 
 The project trains leakage-safe match outcome models from historical fixtures, evaluates them with backtests, serves predictions over HTTP, and runs Monte Carlo simulations for future fixtures.
@@ -34,7 +36,10 @@ world-cup-forecast/
 
 ## Kaggle Data
 
-This project is wired for the Kaggle dataset [FIFA World Cup by Abecklas](https://www.kaggle.com/datasets/abecklas/fifa-world-cup).
+Two Kaggle datasets are supported:
+
+- **[International football results 1872–present](https://www.kaggle.com/datasets/martj42/international-football-results-from-1872-to-2017)** (martj42) — the default. All international matches through the present, so Elo ratings and form reflect current squads and post-2018 backtests are possible.
+- **[FIFA World Cup by Abecklas](https://www.kaggle.com/datasets/abecklas/fifa-world-cup)** — World Cup finals matches only, 1930–2014.
 
 Downloading uses the Kaggle API directly (no extra dependencies), which needs an API credential — either form works:
 
@@ -54,14 +59,9 @@ Then download and convert in one step:
 make data
 ```
 
-That runs `make download-kaggle` (fetches and unzips the CSVs into `data/kaggle/`) followed by `make import-kaggle` (converts the Kaggle schema into the predictor schema). Each step also works on its own, or via the installed console scripts `wc-forecast-download` and `wc-forecast-import-kaggle`.
+That downloads the international dataset into `data/international/` and converts it to `data/international_matches.csv`. For the World Cup–only dataset use `make data-worldcup`, then point the other targets at it with `MATCHES=data/world_cup_matches.csv HOLDOUT_YEAR=2010`. Each step also works on its own, or via the installed console scripts `wc-forecast-download` and `wc-forecast-import-kaggle`.
 
-If you prefer not to create an API key, manually download the dataset from Kaggle and place the files here before running `make import-kaggle`:
-
-```text
-world-cup-forecast/data/kaggle/WorldCupMatches.csv
-world-cup-forecast/data/kaggle/WorldCups.csv
-```
+If you prefer not to create an API key, manually download a dataset from Kaggle and place `results.csv` in `data/international/` (or `WorldCupMatches.csv`/`WorldCups.csv` in `data/kaggle/`) before running the import target.
 
 That writes:
 
@@ -171,7 +171,9 @@ docker run -p 8000:8000 -v "$PWD/artifacts:/app/artifacts" -v "$PWD/data:/app/da
 
 ## Production Notes
 
-- The HTTP server is threaded (`ThreadingHTTPServer`) with HTTP/1.1 keep-alive, per-connection timeouts, and JSON 500 responses instead of dropped connections.
+- The HTTP server is threaded (`ThreadingHTTPServer`) with HTTP/1.1 keep-alive, per-connection timeouts, and JSON 500 responses instead of dropped connections. Pass `--log-requests` to enable access logging.
+- Saved models carry a schema version; loading a model trained by an older feature layout fails at startup with a clear retrain message rather than mispredicting.
+- This is a demo-grade server: for a real public deployment put a reverse proxy in front for TLS termination and rate limiting.
 - Dataset summary, team list, and match ordering are computed once at startup; static assets are cached in memory with mtime invalidation.
 - Monte Carlo simulation predicts each fixture once and draws outcome counts from a multinomial, so cost is independent of the number of runs.
 - Backtesting scores all holdout matches in a single batched model call.
