@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import argparse
 import csv
-import math
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set
-
+from typing import Dict, List, Optional, Set
 
 MATCH_COLUMNS = {
     "Year",
@@ -17,6 +15,26 @@ MATCH_COLUMNS = {
     "Away Team Goals",
     "Away Team Name",
 }
+
+RESULTS_COLUMNS = {
+    "date",
+    "home_team",
+    "away_team",
+    "home_score",
+    "away_score",
+    "tournament",
+    "neutral",
+}
+
+OUTPUT_FIELDS = [
+    "date",
+    "home_team",
+    "away_team",
+    "home_goals",
+    "away_goals",
+    "neutral",
+    "tournament",
+]
 
 
 def clean_cell(value: object) -> str:
@@ -144,22 +162,54 @@ def convert_world_cup_matches(
                 }
             )
 
+    write_output(output_path, rows)
+    return len(rows)
+
+
+def write_output(output_path: Path, rows: List[dict]) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "date",
-                "home_team",
-                "away_team",
-                "home_goals",
-                "away_goals",
-                "neutral",
-                "tournament",
-            ],
-        )
+        writer = csv.DictWriter(handle, fieldnames=OUTPUT_FIELDS)
         writer.writeheader()
         writer.writerows(sorted(rows, key=lambda item: item["date"]))
+
+
+def convert_international_results(results_csv: str | Path, output_csv: str | Path) -> int:
+    """Convert the martj42 international results dataset (results.csv), which
+    covers all international matches from 1872 to the present."""
+    rows: List[dict] = []
+    with Path(results_csv).open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        missing = RESULTS_COLUMNS.difference(reader.fieldnames or [])
+        if missing:
+            raise ValueError(f"Missing results columns: {sorted(missing)}")
+
+        for row in reader:
+            try:
+                match_date = date.fromisoformat(clean_cell(row["date"]))
+                home_goals = parse_int(row["home_score"])
+                away_goals = parse_int(row["away_score"])
+            except ValueError:
+                continue  # unplayed or malformed fixtures carry no result
+
+            home_team = clean_cell(row["home_team"])
+            away_team = clean_cell(row["away_team"])
+            if not home_team or not away_team:
+                continue
+
+            rows.append(
+                {
+                    "date": match_date.isoformat(),
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "home_goals": home_goals,
+                    "away_goals": away_goals,
+                    "neutral": "true" if clean_cell(row["neutral"]).lower() in {"true", "1", "yes"} else "false",
+                    "tournament": clean_cell(row["tournament"]) or "Friendly",
+                }
+            )
+
+    write_output(Path(output_csv), rows)
     return len(rows)
 
 
@@ -171,20 +221,29 @@ def default_kaggle_paths(data_dir: str | Path) -> tuple[Path, Optional[Path]]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Convert Kaggle FIFA World Cup CSV files into predictor training data.")
+    parser = argparse.ArgumentParser(description="Convert Kaggle datasets into predictor training data.")
     parser.add_argument("--matches", help="Path to Kaggle WorldCupMatches.csv")
     parser.add_argument("--world-cups", help="Optional path to Kaggle WorldCups.csv for host-country neutral-site inference")
-    parser.add_argument("--data-dir", default="data/kaggle", help="Directory containing Kaggle CSVs when --matches is omitted")
+    parser.add_argument("--results", help="Path to a results.csv from the international results dataset (martj42)")
+    parser.add_argument(
+        "--data-dir",
+        default="data/kaggle",
+        help="Directory containing Kaggle CSVs when --matches/--results are omitted; results.csv is preferred when present",
+    )
     parser.add_argument("--output", default="data/world_cup_matches.csv")
     args = parser.parse_args()
 
-    if args.matches:
-        matches = Path(args.matches)
+    if args.results:
+        count = convert_international_results(args.results, args.output)
+    elif args.matches:
         cups = Path(args.world_cups) if args.world_cups else None
+        count = convert_world_cup_matches(Path(args.matches), args.output, cups)
+    elif (Path(args.data_dir) / "results.csv").is_file():
+        count = convert_international_results(Path(args.data_dir) / "results.csv", args.output)
     else:
         matches, cups = default_kaggle_paths(args.data_dir)
+        count = convert_world_cup_matches(matches, args.output, cups)
 
-    count = convert_world_cup_matches(matches, args.output, cups)
     print(f"Wrote {count} matches to {args.output}")
 
 

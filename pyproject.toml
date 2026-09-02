@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wc-forecast"
-version = "1.0.0"
+version = "1.1.0"
 description = "Probabilistic World Cup match forecasting: leakage-safe Elo features, calibrated outcome model, Monte Carlo simulation, HTTP serving."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -22,3 +22,9 @@ wc-forecast-import-kaggle = "wc_forecast.kaggle:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

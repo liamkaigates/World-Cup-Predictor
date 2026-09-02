@@ -8,24 +8,24 @@ import numpy as np
 
 from wc_forecast.data import Match
 
-
 FORM_WINDOW = 5
 
+# Difference columns (elo_diff etc.) are deliberately excluded: they are exact
+# linear combinations of the paired columns and only destabilize the solver.
 FEATURE_NAMES = [
-    "elo_diff",
     "home_elo",
     "away_elo",
     "home_form_points",
     "away_form_points",
-    "form_points_diff",
     "home_goal_diff_form",
     "away_goal_diff_form",
-    "goal_diff_form_diff",
     "home_matches_played",
     "away_matches_played",
     "neutral",
     "is_world_cup",
 ]
+
+WORLD_CUP_TOURNAMENTS = {"world cup", "fifa world cup"}
 
 
 def _form_window() -> Deque[float]:
@@ -83,24 +83,17 @@ def get_state(states: Dict[str, TeamState], team: str) -> TeamState:
 
 
 def feature_vector(home: TeamState, away: TeamState, neutral: bool, tournament: str) -> List[float]:
-    home_form = mean_last(home.recent_points)
-    away_form = mean_last(away.recent_points)
-    home_goal_form = mean_last(home.recent_goal_diff)
-    away_goal_form = mean_last(away.recent_goal_diff)
     return [
-        home.elo - away.elo,
         home.elo,
         away.elo,
-        home_form,
-        away_form,
-        home_form - away_form,
-        home_goal_form,
-        away_goal_form,
-        home_goal_form - away_goal_form,
+        mean_last(home.recent_points),
+        mean_last(away.recent_points),
+        mean_last(home.recent_goal_diff),
+        mean_last(away.recent_goal_diff),
         float(home.matches_played),
         float(away.matches_played),
         1.0 if neutral else 0.0,
-        1.0 if tournament.lower() == "world cup" else 0.0,
+        1.0 if tournament.strip().lower() in WORLD_CUP_TOURNAMENTS else 0.0,
     ]
 
 

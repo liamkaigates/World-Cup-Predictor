@@ -12,8 +12,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from wc_forecast.data import Match
-from wc_forecast.features import FEATURE_NAMES, TeamState, build_prediction_vector, build_training_matrix
-
+from wc_forecast.features import (
+    FEATURE_NAMES,
+    TeamState,
+    build_prediction_vector,
+    build_training_matrix,
+)
 
 OUTCOME_LABELS = {
     0: "away_win",
@@ -23,12 +27,17 @@ OUTCOME_LABELS = {
 
 Matchup = Tuple[str, str, bool, str]
 
+# Bump whenever the feature layout changes so stale pickles fail at load
+# time with a clear message instead of at predict time with a shape error.
+MODEL_SCHEMA_VERSION = 2
+
 
 @dataclass
 class ForecastModel:
     pipeline: Pipeline
     team_states: Dict[str, TeamState]
     feature_names: List[str]
+    schema_version: int = MODEL_SCHEMA_VERSION
 
     def predict_proba(self, home_team: str, away_team: str, neutral: bool = True, tournament: str = "World Cup") -> Dict[str, float]:
         row = build_prediction_vector(self.team_states, home_team, away_team, neutral, tournament)
@@ -95,6 +104,12 @@ def load_model(path: str | Path) -> ForecastModel:
         model = pickle.load(handle)
     if not isinstance(model, ForecastModel):
         raise TypeError("Loaded object is not a ForecastModel.")
+    saved_version = getattr(model, "schema_version", 1)
+    if saved_version != MODEL_SCHEMA_VERSION:
+        raise ValueError(
+            f"Model at {path} uses schema version {saved_version}, but this code expects "
+            f"{MODEL_SCHEMA_VERSION}. Retrain it (e.g. `make train`)."
+        )
     return model
 
 

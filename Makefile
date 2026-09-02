@@ -1,19 +1,30 @@
-.PHONY: data download-kaggle import-kaggle train backtest predict simulate test serve
+.PHONY: data data-worldcup download-international import-international download-kaggle import-kaggle train backtest predict simulate test serve serve-sample train-sample backtest-sample
 
 PYTHONPATH := src
 MODEL := artifacts/model.pkl
-MATCHES := data/world_cup_matches.csv
+MATCHES ?= data/international_matches.csv
+WORLD_CUP_MATCHES := data/world_cup_matches.csv
 SAMPLE_MATCHES := data/sample_matches.csv
-# The Kaggle dataset covers 1930-2014, so hold out the last two tournaments by default.
-HOLDOUT_YEAR ?= 2010
+INTERNATIONAL_DATASET := martj42/international-football-results-from-1872-to-2017
+HOLDOUT_YEAR ?= 2018
 
-data: download-kaggle import-kaggle
+# Default: all international matches 1872-present (recommended; keeps ratings current).
+data: download-international import-international
+
+download-international:
+	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.download --dataset $(INTERNATIONAL_DATASET) --data-dir data/international
+
+import-international:
+	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.kaggle --data-dir data/international --output $(MATCHES)
+
+# Alternative: the World Cup-only dataset (1930-2014); pair with MATCHES=$(WORLD_CUP_MATCHES) HOLDOUT_YEAR=2010.
+data-worldcup: download-kaggle import-kaggle
 
 download-kaggle:
 	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.download --data-dir data/kaggle
 
 import-kaggle:
-	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.kaggle --data-dir data/kaggle --output $(MATCHES)
+	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.kaggle --data-dir data/kaggle --output $(WORLD_CUP_MATCHES)
 
 train:
 	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli train --matches $(MATCHES) --model $(MODEL)
