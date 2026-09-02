@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -11,13 +11,29 @@ from wc_forecast.data import parse_bool
 from wc_forecast.data import Match, load_matches
 from wc_forecast.models import ForecastModel, load_model
 
+MAX_MATCH_LIMIT = 500
+
 
 class PredictionHandler(BaseHTTPRequestHandler):
     model: ForecastModel
     matches: list[Match]
     static_dir: Path
+    summary: dict
+    teams: list[str]
+
+    protocol_version = "HTTP/1.1"
+    timeout = 30
+    _static_cache: dict[Path, tuple[float, bytes]] = {}
 
     def do_GET(self) -> None:
+        try:
+            self.route_get()
+        except BrokenPipeError:
+            pass
+        except Exception:
+            self.write_json({"error": "internal server error"}, status=500)
+
+    def route_get(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/health":
             self.write_json({"status": "ok"})
@@ -29,15 +45,20 @@ class PredictionHandler(BaseHTTPRequestHandler):
             self.serve_static(parsed.path.removeprefix("/static/"))
             return
         if parsed.path == "/api/teams":
-            self.write_json({"teams": sorted(self.model.team_states)})
+            self.write_json({"teams": self.teams})
             return
         if parsed.path == "/api/summary":
-            self.write_json(summary_payload(self.matches))
+            self.write_json(self.summary)
             return
         if parsed.path == "/api/matches":
             params = parse_qs(parsed.query)
             team = params.get("team", [""])[0]
-            limit = int(params.get("limit", ["50"])[0])
+            try:
+                limit = int(params.get("limit", ["50"])[0])
+            except ValueError:
+                self.write_json({"error": "limit must be an integer"}, status=400)
+                return
+            limit = max(0, min(limit, MAX_MATCH_LIMIT))
             self.write_json({"matches": match_rows(self.matches, team=team, limit=limit)})
             return
         if parsed.path not in {"/predict", "/api/predict"}:
@@ -68,18 +89,26 @@ class PredictionHandler(BaseHTTPRequestHandler):
             relative_path = "index.html"
         root = self.static_dir.resolve()
         target = (root / relative_path).resolve()
-        if root not in target.parents and target != root:
+        if root not in target.parents:
             self.write_json({"error": "invalid static path"}, status=400)
             return
-        if not target.exists() or not target.is_file():
+        if not target.is_file():
             self.write_json({"error": "static asset not found"}, status=404)
             return
 
+        mtime = target.stat().st_mtime
+        cached = self._static_cache.get(target)
+        if cached and cached[0] == mtime:
+            body = cached[1]
+        else:
+            body = target.read_bytes()
+            self._static_cache[target] = (mtime, body)
+
         content_type = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
-        body = target.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(body)
 
@@ -87,7 +116,7 @@ class PredictionHandler(BaseHTTPRequestHandler):
         return
 
     def write_json(self, payload: dict, status: int = 200) -> None:
-        body = json.dumps(payload, indent=2).encode("utf-8")
+        body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -96,11 +125,12 @@ class PredictionHandler(BaseHTTPRequestHandler):
 
 
 def match_rows(matches: list[Match], team: str = "", limit: int = 50) -> list[dict]:
+    """Return the most recent matches, newest first. `matches` must be sorted by date descending."""
     selected = matches
     if team:
         selected = [match for match in matches if team in {match.home_team, match.away_team}]
     rows = []
-    for match in sorted(selected, key=lambda item: item.date, reverse=True)[:limit]:
+    for match in selected[:limit]:
         rows.append(
             {
                 "date": match.date.isoformat(),
@@ -177,12 +207,22 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
 
+    matches = load_matches(args.matches)
     PredictionHandler.model = load_model(args.model)
-    PredictionHandler.matches = load_matches(args.matches)
+    PredictionHandler.matches = sorted(matches, key=lambda match: match.date, reverse=True)
+    PredictionHandler.summary = summary_payload(matches)
+    PredictionHandler.teams = sorted(PredictionHandler.model.team_states)
     PredictionHandler.static_dir = Path(args.static_dir)
-    server = HTTPServer((args.host, args.port), PredictionHandler)
+
+    server = ThreadingHTTPServer((args.host, args.port), PredictionHandler)
+    server.daemon_threads = True
     print(f"Serving predictions at http://{args.host}:{args.port}")
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Shutting down")
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":

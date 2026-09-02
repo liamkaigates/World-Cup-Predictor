@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wc-forecast"
+version = "1.0.0"
+description = "Probabilistic World Cup match forecasting: leakage-safe Elo features, calibrated outcome model, Monte Carlo simulation, HTTP serving."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+dependencies = [
+    "numpy>=1.23,<3",
+    "scikit-learn>=1.2,<2",
+]
+
+[project.scripts]
+wc-forecast = "wc_forecast.cli:main"
+wc-forecast-api = "wc_forecast.api:main"
+wc-forecast-import-kaggle = "wc_forecast.kaggle:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

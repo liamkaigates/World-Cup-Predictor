@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import csv
-import random
 from pathlib import Path
 from typing import Dict, List
+
+import numpy as np
 
 from wc_forecast.data import parse_bool
 from wc_forecast.models import ForecastModel
@@ -26,36 +27,36 @@ def load_fixtures(path: str | Path) -> List[dict]:
         ]
 
 
-def sample_outcome(probs: Dict[str, float]) -> str:
+def sample_outcome(probs: Dict[str, float], rng: np.random.Generator | None = None) -> str:
     labels = ["away_win", "draw", "home_win"]
-    weights = [probs[label] for label in labels]
-    return random.choices(labels, weights=weights, k=1)[0]
+    weights = np.asarray([probs[label] for label in labels], dtype=float)
+    rng = rng or np.random.default_rng()
+    return labels[rng.choice(len(labels), p=weights / weights.sum())]
 
 
 def simulate_fixtures(model: ForecastModel, fixtures: List[dict], runs: int = 1000, seed: int = 7) -> List[dict]:
-    random.seed(seed)
-    counts: Dict[str, Dict[str, int]] = {}
+    if runs <= 0:
+        raise ValueError("runs must be a positive integer")
+    if not fixtures:
+        return []
 
-    for fixture in fixtures:
-        matchup = f"{fixture['home_team']} vs {fixture['away_team']}"
-        counts[matchup] = {"home_win": 0, "draw": 0, "away_win": 0}
-
-    for _ in range(runs):
-        for fixture in fixtures:
-            probs = model.predict_proba(
-                fixture["home_team"],
-                fixture["away_team"],
-                neutral=fixture["neutral"],
-            )
-            outcome = sample_outcome(probs)
-            matchup = f"{fixture['home_team']} vs {fixture['away_team']}"
-            counts[matchup][outcome] += 1
+    rng = np.random.default_rng(seed)
+    # Outcome probabilities are fixed per fixture, so predict each fixture once
+    # and draw all runs from a single multinomial instead of resampling the model.
+    probs = model.predict_proba_batch(
+        (fixture["home_team"], fixture["away_team"], fixture["neutral"], "World Cup")
+        for fixture in fixtures
+    )
 
     rows = []
-    for fixture in fixtures:
-        matchup = f"{fixture['home_team']} vs {fixture['away_team']}"
-        row = {"matchup": matchup}
-        row.update({key: value / runs for key, value in counts[matchup].items()})
-        rows.append(row)
+    for fixture, fixture_probs in zip(fixtures, probs):
+        counts = rng.multinomial(runs, fixture_probs / fixture_probs.sum())
+        rows.append(
+            {
+                "matchup": f"{fixture['home_team']} vs {fixture['away_team']}",
+                "home_win": counts[2] / runs,
+                "draw": counts[1] / runs,
+                "away_win": counts[0] / runs,
+            }
+        )
     return rows
-

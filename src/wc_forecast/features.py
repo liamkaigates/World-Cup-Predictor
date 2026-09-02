@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Tuple
+from typing import Deque, Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 
 from wc_forecast.data import Match
 
+
+FORM_WINDOW = 5
 
 FEATURE_NAMES = [
     "elo_diff",
@@ -25,11 +28,15 @@ FEATURE_NAMES = [
 ]
 
 
+def _form_window() -> Deque[float]:
+    return deque(maxlen=FORM_WINDOW)
+
+
 @dataclass
 class TeamState:
     elo: float = 1500.0
-    recent_points: List[float] = field(default_factory=list)
-    recent_goal_diff: List[float] = field(default_factory=list)
+    recent_points: Deque[float] = field(default_factory=_form_window)
+    recent_goal_diff: Deque[float] = field(default_factory=_form_window)
     matches_played: int = 0
 
 
@@ -61,10 +68,12 @@ def update_elo(home: TeamState, away: TeamState, home_goals: int, away_goals: in
     away.elo -= delta
 
 
-def mean_last(values: List[float], default: float = 0.0, window: int = 5) -> float:
+def mean_last(values: Sequence[float], default: float = 0.0, window: int = FORM_WINDOW) -> float:
     if not values:
         return default
-    return float(np.mean(values[-window:]))
+    if len(values) > window:
+        values = list(values)[-window:]
+    return sum(values) / len(values)
 
 
 def get_state(states: Dict[str, TeamState], team: str) -> TeamState:

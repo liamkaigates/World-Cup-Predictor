@@ -2,9 +2,11 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from wc_forecast.api import match_rows
 from wc_forecast.data import load_matches
 from wc_forecast.kaggle import convert_world_cup_matches
 from wc_forecast.models import backtest, train_model
+from wc_forecast.simulate import simulate_fixtures
 
 
 class ForecastPipelineTest(unittest.TestCase):
@@ -22,6 +24,48 @@ class ForecastPipelineTest(unittest.TestCase):
         self.assertGreater(metrics["test_matches"], 0)
         self.assertGreaterEqual(metrics["accuracy"], 0.0)
         self.assertLessEqual(metrics["accuracy"], 1.0)
+
+    def test_batch_prediction_matches_single(self):
+        matches = load_matches("data/sample_matches.csv")
+        model = train_model(matches)
+        matchups = [
+            ("Argentina", "France", True, "World Cup"),
+            ("Brazil", "Germany", False, "Friendly"),
+        ]
+        batch = model.predict_proba_batch(matchups)
+        for row, (home, away, neutral, tournament) in zip(batch, matchups):
+            single = model.predict_proba(home, away, neutral, tournament)
+            self.assertAlmostEqual(row[0], single["away_win"], places=9)
+            self.assertAlmostEqual(row[1], single["draw"], places=9)
+            self.assertAlmostEqual(row[2], single["home_win"], places=9)
+
+    def test_simulation_is_deterministic_and_normalized(self):
+        matches = load_matches("data/sample_matches.csv")
+        model = train_model(matches)
+        fixtures = [
+            {"home_team": "Argentina", "away_team": "France", "neutral": True},
+            {"home_team": "Brazil", "away_team": "Croatia", "neutral": True},
+        ]
+        first = simulate_fixtures(model, fixtures, runs=500, seed=11)
+        second = simulate_fixtures(model, fixtures, runs=500, seed=11)
+        self.assertEqual(first, second)
+        for row in first:
+            total = row["home_win"] + row["draw"] + row["away_win"]
+            self.assertAlmostEqual(total, 1.0, places=9)
+
+    def test_match_rows_filters_and_limits(self):
+        matches = sorted(
+            load_matches("data/sample_matches.csv"),
+            key=lambda match: match.date,
+            reverse=True,
+        )
+        rows = match_rows(matches, limit=5)
+        self.assertEqual(len(rows), 5)
+        dates = [row["date"] for row in rows]
+        self.assertEqual(dates, sorted(dates, reverse=True))
+        team_rows = match_rows(matches, team="Argentina", limit=100)
+        for row in team_rows:
+            self.assertIn("Argentina", {row["home_team"], row["away_team"]})
 
     def test_kaggle_importer(self):
         with TemporaryDirectory() as tmp:
