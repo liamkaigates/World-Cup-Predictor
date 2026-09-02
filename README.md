@@ -36,24 +36,30 @@ world-cup-forecast/
 
 This project is wired for the Kaggle dataset [FIFA World Cup by Abecklas](https://www.kaggle.com/datasets/abecklas/fifa-world-cup).
 
-Kaggle usually requires an authenticated account/API token to download datasets. Download the dataset from Kaggle and place the files here:
+Downloading uses the Kaggle API directly (no extra dependencies), which needs an API key:
+
+1. On kaggle.com go to **Settings → API → Create New Token**. This downloads a `kaggle.json` file.
+2. Save it to `~/.kaggle/kaggle.json` and restrict its permissions:
+
+```bash
+mkdir -p ~/.kaggle && mv ~/Downloads/kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
+```
+
+Alternatively, export `KAGGLE_USERNAME` and `KAGGLE_KEY` in the environment (these take precedence over the file). Never commit the key: `kaggle.json` and `data/kaggle/` are gitignored.
+
+Then download and convert in one step:
+
+```bash
+make data
+```
+
+That runs `make download-kaggle` (fetches and unzips the CSVs into `data/kaggle/`) followed by `make import-kaggle` (converts the Kaggle schema into the predictor schema). Each step also works on its own, or via the installed console scripts `wc-forecast-download` and `wc-forecast-import-kaggle`.
+
+If you prefer not to create an API key, manually download the dataset from Kaggle and place the files here before running `make import-kaggle`:
 
 ```text
 world-cup-forecast/data/kaggle/WorldCupMatches.csv
 world-cup-forecast/data/kaggle/WorldCups.csv
-```
-
-With the Kaggle CLI configured, the download command is:
-
-```bash
-mkdir -p data/kaggle
-kaggle datasets download -d abecklas/fifa-world-cup -p data/kaggle --unzip
-```
-
-Then convert the Kaggle schema into the predictor schema:
-
-```bash
-make import-kaggle
 ```
 
 That writes:
@@ -89,7 +95,7 @@ Installing the package provides three console scripts: `wc-forecast` (CLI), `wc-
 Train a model:
 
 ```bash
-make import-kaggle
+make data
 make train
 ```
 
