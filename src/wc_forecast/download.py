@@ -10,7 +10,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 
 KAGGLE_API_BASE = "https://www.kaggle.com/api/v1"
@@ -22,19 +22,32 @@ class CredentialsError(RuntimeError):
     """Raised when no Kaggle API credentials can be found."""
 
 
-def load_credentials() -> Tuple[str, str]:
-    """Return (username, key) from the environment or kaggle.json.
+def _config_dir() -> Path:
+    return Path(os.environ.get("KAGGLE_CONFIG_DIR", "") or Path.home() / ".kaggle")
 
-    Checks KAGGLE_USERNAME/KAGGLE_KEY first, then the standard token file at
-    $KAGGLE_CONFIG_DIR/kaggle.json (default ~/.kaggle/kaggle.json).
-    """
+
+def load_access_token() -> Optional[str]:
+    """Return a Kaggle access token (KGAT_...) from KAGGLE_API_TOKEN or
+    $KAGGLE_CONFIG_DIR/access_token, or None when neither is configured."""
+    token = os.environ.get("KAGGLE_API_TOKEN", "").strip()
+    if token:
+        return token
+    token_path = _config_dir() / "access_token"
+    if token_path.is_file():
+        token = token_path.read_text(encoding="utf-8").strip()
+        if token:
+            return token
+    return None
+
+
+def load_credentials() -> Tuple[str, str]:
+    """Return (username, key) from KAGGLE_USERNAME/KAGGLE_KEY or kaggle.json."""
     username = os.environ.get("KAGGLE_USERNAME")
     key = os.environ.get("KAGGLE_KEY")
     if username and key:
         return username, key
 
-    config_dir = Path(os.environ.get("KAGGLE_CONFIG_DIR", "") or Path.home() / ".kaggle")
-    config_path = config_dir / "kaggle.json"
+    config_path = _config_dir() / "kaggle.json"
     if config_path.is_file():
         payload = json.loads(config_path.read_text(encoding="utf-8"))
         username = payload.get("username")
@@ -43,9 +56,20 @@ def load_credentials() -> Tuple[str, str]:
             return username, key
 
     raise CredentialsError(
-        "Kaggle API credentials not found. Set KAGGLE_USERNAME and KAGGLE_KEY, or save an API "
-        "token to ~/.kaggle/kaggle.json (kaggle.com -> Settings -> API -> Create New Token)."
+        "Kaggle API credentials not found. Either save an access token to ~/.kaggle/access_token "
+        "(or set KAGGLE_API_TOKEN), or set KAGGLE_USERNAME and KAGGLE_KEY, or save an API token "
+        "to ~/.kaggle/kaggle.json (kaggle.com -> Settings -> API -> Create New Token)."
     )
+
+
+def auth_header() -> str:
+    """Prefer a bearer access token; fall back to basic auth with username/key."""
+    token = load_access_token()
+    if token:
+        return f"Bearer {token}"
+    username, key = load_credentials()
+    basic = base64.b64encode(f"{username}:{key}".encode("utf-8")).decode("ascii")
+    return f"Basic {basic}"
 
 
 class _CrossHostAuthStripper(urllib.request.HTTPRedirectHandler):
@@ -60,11 +84,9 @@ class _CrossHostAuthStripper(urllib.request.HTTPRedirectHandler):
 
 
 def fetch_dataset_zip(dataset: str, destination: Path, timeout: float = 60.0) -> None:
-    username, key = load_credentials()
-    token = base64.b64encode(f"{username}:{key}".encode("utf-8")).decode("ascii")
     request = urllib.request.Request(
         f"{KAGGLE_API_BASE}/datasets/download/{dataset}",
-        headers={"Authorization": f"Basic {token}", "User-Agent": "wc-forecast"},
+        headers={"Authorization": auth_header(), "User-Agent": "wc-forecast"},
     )
     opener = urllib.request.build_opener(_CrossHostAuthStripper)
     with opener.open(request, timeout=timeout) as response, destination.open("wb") as handle:

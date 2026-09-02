@@ -4,6 +4,8 @@ PYTHONPATH := src
 MODEL := artifacts/model.pkl
 MATCHES := data/world_cup_matches.csv
 SAMPLE_MATCHES := data/sample_matches.csv
+# The Kaggle dataset covers 1930-2014, so hold out the last two tournaments by default.
+HOLDOUT_YEAR ?= 2010
 
 data: download-kaggle import-kaggle
 
@@ -20,7 +22,7 @@ train-sample:
 	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli train --matches $(SAMPLE_MATCHES) --model $(MODEL)
 
 backtest:
-	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli backtest --matches $(MATCHES) --holdout-year 2022
+	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli backtest --matches $(MATCHES) --holdout-year $(HOLDOUT_YEAR)
 
 backtest-sample:
 	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.cli backtest --matches $(SAMPLE_MATCHES) --holdout-year 2022

@@ -36,16 +36,17 @@ world-cup-forecast/
 
 This project is wired for the Kaggle dataset [FIFA World Cup by Abecklas](https://www.kaggle.com/datasets/abecklas/fifa-world-cup).
 
-Downloading uses the Kaggle API directly (no extra dependencies), which needs an API key:
+Downloading uses the Kaggle API directly (no extra dependencies), which needs an API credential — either form works:
 
-1. On kaggle.com go to **Settings → API → Create New Token**. This downloads a `kaggle.json` file.
-2. Save it to `~/.kaggle/kaggle.json` and restrict its permissions:
+**Access token** (`KGAT_...`): save it to `~/.kaggle/access_token` (with `chmod 600`) or export it as `KAGGLE_API_TOKEN`. An access token takes precedence when both credential types are present.
+
+**Username + key** (`kaggle.json`): on kaggle.com go to **Settings → API → Create New Token**, then:
 
 ```bash
 mkdir -p ~/.kaggle && mv ~/Downloads/kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
 ```
 
-Alternatively, export `KAGGLE_USERNAME` and `KAGGLE_KEY` in the environment (these take precedence over the file). Never commit the key: `kaggle.json` and `data/kaggle/` are gitignored.
+or export `KAGGLE_USERNAME` and `KAGGLE_KEY`. Never commit credentials: `kaggle.json` and `data/kaggle/` are gitignored.
 
 Then download and convert in one step:
 
