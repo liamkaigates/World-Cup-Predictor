@@ -155,6 +155,34 @@ make train-sample
 make backtest-sample
 ```
 
+## Tournament Simulation and the 2026 World Cup
+
+`compare` forecasts an entire World Cup and scores the forecast against what actually happened. It reconstructs the real group draw and hosts from the match data, trains a model **only on matches played before the tournament started** (leakage-safe), Monte Carlos the whole tournament — group round-robin, best-thirds advancement, knockout rounds — and reports championship probabilities next to the actual results:
+
+```bash
+make compare
+```
+
+or directly:
+
+```bash
+PYTHONPATH=src python3 -m wc_forecast.cli compare --matches data/international_matches.csv --year 2026 --runs 10000
+```
+
+Against the actual 2026 World Cup (trained on the 49,416 matches played before June 11, 2026; 10,000 simulations):
+
+| Predicted rank | Team | Champion prob. | Actual result |
+| --- | --- | --- | --- |
+| 1 | Argentina | 18.4% | Runner-up |
+| 2 | **Spain** | 12.6% | **Champion** |
+| 3 | England | 11.9% | Third place |
+| 4 | Portugal | 9.3% | — |
+| 5 | France | 7.4% | Fourth place |
+
+The model's top two picks contested the actual final (Spain 1–0 Argentina), and all four actual semifinalists were in its top five. Match-level, the pre-tournament model scored 58.7% accuracy / 0.91 log-loss over all 104 matches.
+
+Simulation approximations: knockout pairings re-seed each round by group-stage record rather than following FIFA's fixed bracket template, drawn knockout matches are decided by a 50/50 shootout, and group tiebreaks use Elo as a stand-in for goal difference.
+
 ## Docker
 
 ```bash
