@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 from wc_forecast.download import (
     CredentialsError,
+    auth_header,
     download_dataset,
     extract_csvs,
+    load_access_token,
     load_credentials,
 )
 
@@ -32,6 +34,26 @@ class DownloadTest(unittest.TestCase):
             config.write_text(json.dumps({"username": "someone", "key": "secret"}), encoding="utf-8")
             with patch.dict("os.environ", {"KAGGLE_CONFIG_DIR": tmp}, clear=True):
                 self.assertEqual(load_credentials(), ("someone", "secret"))
+
+    def test_access_token_from_env(self):
+        with patch.dict("os.environ", {"KAGGLE_API_TOKEN": "KGAT_example"}, clear=True):
+            self.assertEqual(load_access_token(), "KGAT_example")
+            self.assertEqual(auth_header(), "Bearer KGAT_example")
+
+    def test_access_token_from_file_strips_whitespace(self):
+        with TemporaryDirectory() as tmp:
+            (Path(tmp) / "access_token").write_text("KGAT_example\n", encoding="utf-8")
+            with patch.dict("os.environ", {"KAGGLE_CONFIG_DIR": tmp}, clear=True):
+                self.assertEqual(load_access_token(), "KGAT_example")
+
+    def test_access_token_preferred_over_basic_auth(self):
+        env = {
+            "KAGGLE_API_TOKEN": "KGAT_example",
+            "KAGGLE_USERNAME": "someone",
+            "KAGGLE_KEY": "secret",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            self.assertEqual(auth_header(), "Bearer KGAT_example")
 
     def test_missing_credentials_raise(self):
         with TemporaryDirectory() as tmp:
