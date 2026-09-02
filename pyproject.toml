@@ -17,6 +17,7 @@ dependencies = [
 [project.scripts]
 wc-forecast = "wc_forecast.cli:main"
 wc-forecast-api = "wc_forecast.api:main"
+wc-forecast-download = "wc_forecast.download:main"
 wc-forecast-import-kaggle = "wc_forecast.kaggle:main"
 
 [tool.setuptools.packages.find]

@@ -8,4 +8,6 @@ dist/
 artifacts/
 *.pkl
 *.csv.out
+kaggle.json
+data/kaggle/
 

@@ -1,9 +1,14 @@
-.PHONY: train backtest predict simulate test serve
+.PHONY: data download-kaggle import-kaggle train backtest predict simulate test serve
 
 PYTHONPATH := src
 MODEL := artifacts/model.pkl
 MATCHES := data/world_cup_matches.csv
 SAMPLE_MATCHES := data/sample_matches.csv
+
+data: download-kaggle import-kaggle
+
+download-kaggle:
+	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.download --data-dir data/kaggle
 
 import-kaggle:
 	PYTHONPATH=$(PYTHONPATH) python3 -m wc_forecast.kaggle --data-dir data/kaggle --output $(MATCHES)
