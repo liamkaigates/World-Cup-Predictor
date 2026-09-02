@@ -3,7 +3,7 @@ from __future__ import annotations
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -21,6 +21,8 @@ OUTCOME_LABELS = {
     2: "home_win",
 }
 
+Matchup = Tuple[str, str, bool, str]
+
 
 @dataclass
 class ForecastModel:
@@ -35,6 +37,24 @@ class ForecastModel:
         for label in OUTCOME_LABELS.values():
             probs.setdefault(label, 0.0)
         return dict(sorted(probs.items()))
+
+    def predict_proba_batch(self, matchups: Iterable[Matchup]) -> np.ndarray:
+        """Predict many matchups with one pipeline call.
+
+        Each matchup is (home_team, away_team, neutral, tournament). Returns an
+        array of shape (n, 3) with columns [away_win, draw, home_win].
+        """
+        rows = np.vstack(
+            [
+                build_prediction_vector(self.team_states, home, away, neutral, tournament)
+                for home, away, neutral, tournament in matchups
+            ]
+        )
+        raw = self.pipeline.predict_proba(rows)
+        probs = np.zeros((rows.shape[0], len(OUTCOME_LABELS)))
+        for column, cls in enumerate(self.pipeline.classes_):
+            probs[:, int(cls)] = raw[:, column]
+        return probs
 
     def predict_label(self, home_team: str, away_team: str, neutral: bool = True, tournament: str = "World Cup") -> str:
         probs = self.predict_proba(home_team, away_team, neutral, tournament)
@@ -86,16 +106,10 @@ def backtest(matches: List[Match], holdout_year: int) -> Dict[str, float]:
 
     model = train_model(train)
     y_true = np.asarray([match.outcome for match in test], dtype=int)
-    y_prob = []
-    y_pred = []
-
-    for match in test:
-        probs = model.predict_proba(match.home_team, match.away_team, match.neutral, match.tournament)
-        ordered = [probs["away_win"], probs["draw"], probs["home_win"]]
-        y_prob.append(ordered)
-        y_pred.append(int(np.argmax(ordered)))
-
-    y_prob_arr = np.asarray(y_prob, dtype=float)
+    y_prob_arr = model.predict_proba_batch(
+        (match.home_team, match.away_team, match.neutral, match.tournament) for match in test
+    )
+    y_pred = np.argmax(y_prob_arr, axis=1)
     return {
         "train_matches": float(len(train)),
         "test_matches": float(len(test)),

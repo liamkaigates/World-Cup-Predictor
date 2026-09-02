@@ -16,15 +16,19 @@ The project trains leakage-safe match outcome models from historical fixtures, e
 world-cup-forecast/
   data/
     sample_matches.csv
+    sample_fixtures.csv
   src/wc_forecast/
     api.py
     cli.py
     data.py
     features.py
+    kaggle.py
     models.py
     simulate.py
+  static/            # dashboard frontend
   tests/
     test_pipeline.py
+  pyproject.toml
   requirements.txt
 ```
 
@@ -77,8 +81,10 @@ From this folder:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
+
+Installing the package provides three console scripts: `wc-forecast` (CLI), `wc-forecast-api` (HTTP server), and `wc-forecast-import-kaggle` (data importer). The Makefile targets below also work without installing by setting `PYTHONPATH=src`.
 
 Train a model:
 
@@ -148,6 +154,20 @@ make backtest-sample
 docker build -t world-cup-forecast .
 docker run -p 8000:8000 world-cup-forecast
 ```
+
+The image trains on the bundled sample data at build time, runs as a non-root user, and exposes a `HEALTHCHECK` against `/health`. To serve a model trained on the full Kaggle data, mount it and override the command:
+
+```bash
+docker run -p 8000:8000 -v "$PWD/artifacts:/app/artifacts" -v "$PWD/data:/app/data" world-cup-forecast \
+  wc-forecast-api --model artifacts/model.pkl --matches data/world_cup_matches.csv --host 0.0.0.0 --port 8000
+```
+
+## Production Notes
+
+- The HTTP server is threaded (`ThreadingHTTPServer`) with HTTP/1.1 keep-alive, per-connection timeouts, and JSON 500 responses instead of dropped connections.
+- Dataset summary, team list, and match ordering are computed once at startup; static assets are cached in memory with mtime invalidation.
+- Monte Carlo simulation predicts each fixture once and draws outcome counts from a multinomial, so cost is independent of the number of runs.
+- Backtesting scores all holdout matches in a single batched model call.
 
 ## Suggested Resume Bullet
 

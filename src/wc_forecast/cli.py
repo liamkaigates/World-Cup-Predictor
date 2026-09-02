@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
 from wc_forecast.data import load_matches, parse_bool, write_predictions
 from wc_forecast.models import backtest, load_model, save_model, train_model
@@ -79,7 +78,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    Path("artifacts").mkdir(exist_ok=True)
     args.func(args)
 
 
